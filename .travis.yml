@@ -1,0 +1,45 @@
+dist: trusty
+sudo: required
+services:
+- docker
+
+# Get Google Chrome headless browser for Angular test
+# Install lastest Docker CE so we can use Dockerfile build outside context
+addons:
+  apt:
+    sources:
+      - goolge-chrome
+    packages:
+      - google-chrome-stable
+      - docker-ce
+
+# Install any dependencies and update Docker Compose to version 1.23.2 so we can use Dockerfile outside context
+before_install: 
+- docker --version
+- docker-compse --version
+- sudo rm /usr/local/bin/docker-compose
+- curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` > docker-compose
+- chmod +x docker-compose
+- sudo mv docker-compose /usr/local/bin
+- docker-compose --version
+
+# Install
+
+# Build development image for test
+before_script: 
+- docker build ./todo-view -f ./todo-view/Dockerfile.dev -t datn/todo-view-test
+- docker build ./todo-cache-service -f Dockerfile.nodejs.dev -t datn/todo-cache-service-test
+
+# Run some test
+script: 
+- docker run datn/todo-view-test npm test -- --watch=false --no-progress --browsers=ChromeHeadlessNoSandbox
+- docker run datn/todo-cache-service-test npm test
+
+# Build and Deploy Prod Image after pass test
+after_success: 
+# Build Production Image for deployment
+- docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
+# Login to Docker HUb
+- echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_ID" --password-stdin
+# Take build production image and push it to Docker Hub
+- docker-compose -f docker-compose.yml -f docker-compose.prod.yml push
