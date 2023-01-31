@@ -22,7 +22,7 @@ services:
     build:
       context: ./todo-postgres
       dockerfile: Dockerfile
-    image: todo-postgres:1.0
+    image: datn/todo-postgres:1.0
     ports:
       - 5432:5432
     volumes:
